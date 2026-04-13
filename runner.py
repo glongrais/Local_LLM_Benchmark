@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 import uuid
 from datetime import datetime, timezone
@@ -20,6 +21,75 @@ from server import kill_orphans, start_server, stop_server, wait_for_health
 from storage import get_db, save_result, save_run
 
 console = Console()
+
+
+# ---------------------------------------------------------------------------
+# Model prefetcher — downloads upcoming models in the background
+# ---------------------------------------------------------------------------
+
+class ModelPrefetcher:
+    """Downloads HF models in a background thread while benchmarks run."""
+
+    def __init__(self):
+        self._threads: dict[str, threading.Thread] = {}
+        self._done: set[str] = set()
+        self._errors: dict[str, str] = {}
+        self._progress: dict[str, float] = {}  # key -> fraction 0-1
+
+    def prefetch(self, config: ServerConfig) -> None:
+        """Start downloading a model in the background if not already cached."""
+        if not config.hf_repo:
+            return
+        if config.resolve_model_path():
+            return
+        key = f"{config.hf_repo}:{config.hf_file}"
+        if key in self._threads or key in self._done:
+            return
+        self._progress[key] = 0.0
+        t = threading.Thread(target=self._download, args=(config, key), daemon=True)
+        t.start()
+        self._threads[key] = t
+        console.print(f"  [dim]Prefetching {config.label}...[/dim]")
+
+    def _download(self, config: ServerConfig, key: str) -> None:
+        import logging
+        import os
+
+        # Silence huggingface_hub's tqdm and logging
+        os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+        logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+
+        try:
+            from huggingface_hub import hf_hub_download
+            kwargs = {"repo_id": config.hf_repo}
+            if config.hf_file:
+                kwargs["filename"] = config.hf_file
+            else:
+                from huggingface_hub import list_repo_files
+                files = list_repo_files(config.hf_repo)
+                for f in files:
+                    if f.endswith(".gguf") and "mmproj" not in f:
+                        hf_hub_download(repo_id=config.hf_repo, filename=f)
+                        self._done.add(key)
+                        return
+            hf_hub_download(**kwargs)
+            self._done.add(key)
+        except Exception as e:
+            self._errors[key] = str(e)
+
+    def wait_for(self, config: ServerConfig) -> None:
+        """Block until a specific model is downloaded."""
+        if not config.hf_repo:
+            return
+        key = f"{config.hf_repo}:{config.hf_file}"
+        t = self._threads.get(key)
+        if t and t.is_alive():
+            console.print(f"  [cyan]Waiting for download:[/cyan] {config.label}...")
+            t.join()
+        if key in self._done:
+            console.print(f"  [green]Downloaded:[/green] {config.label}")
+        if key in self._errors:
+            console.print(f"  [yellow]Download error: {self._errors[key][:80]}[/yellow]")
 
 
 def load_prompts(prompt_dirs: list[str]) -> list[dict]:
@@ -164,6 +234,21 @@ def run_benchmark(plan: BenchmarkPlan, db_path=None, skip_existing: bool = False
 
     run_ids = []
     total_configs = len(plan.configs)
+    prefetcher = ModelPrefetcher()
+
+    # Kick off download for the first model immediately
+    configs_to_run = []
+    for ci, config in enumerate(plan.configs):
+        if skip_existing and config.label in existing_labels:
+            continue
+        configs_to_run.append((ci, config))
+
+    # Prefetch first model (block until ready), start second in background
+    if configs_to_run:
+        prefetcher.prefetch(configs_to_run[0][1])
+        prefetcher.wait_for(configs_to_run[0][1])
+    if len(configs_to_run) > 1:
+        prefetcher.prefetch(configs_to_run[1][1])
 
     for ci, config in enumerate(plan.configs, 1):
         console.rule(f"[bold]{config.label}[/bold]  ({ci}/{total_configs})")
@@ -171,6 +256,14 @@ def run_benchmark(plan: BenchmarkPlan, db_path=None, skip_existing: bool = False
         if skip_existing and config.label in existing_labels:
             console.print("  [dim]Skipped (already in DB)[/dim]")
             continue
+
+        # Make sure this model is downloaded
+        prefetcher.wait_for(config)
+
+        # Prefetch the next uncached model(s) while we run this one
+        remaining = [c for _, c in configs_to_run if c.label != config.label]
+        for upcoming in remaining[:2]:
+            prefetcher.prefetch(upcoming)
 
         # Check memory
         avail_mb = check_available_memory()
@@ -185,9 +278,9 @@ def run_benchmark(plan: BenchmarkPlan, db_path=None, skip_existing: bool = False
         timestamp = datetime.now(timezone.utc).isoformat()
         proc = start_server(config, run_id)
 
-        # Wait for server with spinner
-        with console.status(f"  Loading model (PID: {proc.pid})...", spinner="dots"):
-            ready = wait_for_health(config.port, timeout=180)
+        # Wait for server
+        console.print(f"  [dim]Loading model (PID: {proc.pid})...[/dim]")
+        ready = wait_for_health(config.port, timeout=180)
 
         if not ready:
             console.print("  [red]Server failed to start. Skipping.[/red]")

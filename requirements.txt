@@ -2,3 +2,4 @@ requests
 psutil
 rich
 numpy
+huggingface-hub

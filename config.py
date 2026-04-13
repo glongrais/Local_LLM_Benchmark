@@ -107,5 +107,5 @@ def load_plan(path: str | Path) -> BenchmarkPlan:
     with open(path) as f:
         data = json.load(f)
     configs = [ServerConfig(**c) for c in data.get("configs", [])]
-    plan_kwargs = {k: v for k, v in data.items() if k != "configs"}
+    plan_kwargs = {k: v for k, v in data.items() if k != "configs" and not k.startswith("_")}
     return BenchmarkPlan(configs=configs, **plan_kwargs)
