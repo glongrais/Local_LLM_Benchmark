@@ -11,7 +11,7 @@ from pathlib import Path
 
 import requests
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn, MofNCompleteColumn
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn, MofNCompleteColumn
 from rich.table import Table
 
 from config import BenchmarkPlan, ServerConfig
@@ -303,6 +303,8 @@ def run_benchmark(plan: BenchmarkPlan, db_path=None, skip_existing: bool = False
             MofNCompleteColumn(),
             TextColumn("•"),
             TimeElapsedColumn(),
+            TextColumn("/"),
+            TimeRemainingColumn(),
             TextColumn("• {task.fields[status]}"),
             console=console,
             transient=True,
