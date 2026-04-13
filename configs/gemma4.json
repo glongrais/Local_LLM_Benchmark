@@ -1,0 +1,35 @@
+{
+  "configs": [
+    {
+      "label": "Gemma4-E4B-Q8_0",
+      "hf_repo": "ggml-org/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-e4b-it-Q8_0.gguf",
+      "quantization": "Q8_0",
+      "param_count": "E4B",
+      "ctx_size": 8192,
+      "flash_attn": true
+    },
+    {
+      "label": "Gemma4-31B-Q4_K_XL",
+      "hf_repo": "unsloth/gemma-4-31B-it-GGUF",
+      "hf_file": "gemma-4-31B-it-UD-Q4_K_XL.gguf",
+      "quantization": "Q4_K_XL",
+      "param_count": "31B",
+      "ctx_size": 8192,
+      "flash_attn": true
+    },
+    {
+      "label": "Gemma4-31B-Q8_0",
+      "hf_repo": "ggml-org/gemma-4-31B-it-GGUF",
+      "hf_file": "gemma-4-31B-it-Q8_0.gguf",
+      "quantization": "Q8_0",
+      "param_count": "31B",
+      "ctx_size": 8192,
+      "flash_attn": true
+    }
+  ],
+  "prompt_dirs": ["prompts/"],
+  "repeat": 1,
+  "max_tokens": 8192,
+  "temperature": 0.0
+}

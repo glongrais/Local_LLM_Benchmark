@@ -1,0 +1,26 @@
+[
+  {
+    "name": "summarization",
+    "category": "general",
+    "system": "You are a helpful assistant.",
+    "prompt": "Explain the concept of nuclear fusion in a way that a 12-year-old would understand. Cover: what it is, how it differs from fission, why it's hard to achieve, and why scientists are excited about it. Keep it under 200 words.",
+    "max_tokens": 4096,
+    "reference_keywords": ["atoms", "energy", "sun", "fission", "temperature"]
+  },
+  {
+    "name": "comparison",
+    "category": "general",
+    "system": "You are a helpful assistant.",
+    "prompt": "Compare and contrast REST APIs and GraphQL. Cover: architecture approach, data fetching efficiency, learning curve, tooling ecosystem, and when to choose each. Be concise and balanced.",
+    "max_tokens": 4096,
+    "reference_keywords": ["REST", "GraphQL", "endpoint", "query", "overfetching"]
+  },
+  {
+    "name": "instruction_following",
+    "category": "general",
+    "system": "You are a helpful assistant. Follow the instructions precisely.",
+    "prompt": "Write exactly 5 sentences about machine learning. Each sentence must start with a different letter from the word 'LEARN' (L, E, A, R, N in that order). Each sentence must contain exactly one number.",
+    "max_tokens": 4096,
+    "reference_keywords": ["L", "E", "A", "R", "N"]
+  }
+]

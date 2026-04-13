@@ -1,0 +1,44 @@
+{
+  "configs": [
+    {
+      "label": "Gemma4-E2B-Q4_K_M",
+      "hf_repo": "unsloth/gemma-4-E2B-it-GGUF",
+      "hf_file": "gemma-4-E2B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E2B",
+      "ctx_size": 8192,
+      "flash_attn": true
+    },
+    {
+      "label": "Gemma4-E2B-Q8_0",
+      "hf_repo": "unsloth/gemma-4-E2B-it-GGUF",
+      "hf_file": "gemma-4-E2B-it-Q8_0.gguf",
+      "quantization": "Q8_0",
+      "param_count": "E2B",
+      "ctx_size": 8192,
+      "flash_attn": true
+    },
+    {
+      "label": "Gemma4-E4B-Q4_K_M",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 8192,
+      "flash_attn": true
+    },
+    {
+      "label": "Gemma4-E4B-Q8_0",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q8_0.gguf",
+      "quantization": "Q8_0",
+      "param_count": "E4B",
+      "ctx_size": 8192,
+      "flash_attn": true
+    }
+  ],
+  "prompt_dirs": ["prompts/"],
+  "repeat": 1,
+  "max_tokens": 8192,
+  "temperature": 0.0
+}

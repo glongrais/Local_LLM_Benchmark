@@ -1,0 +1,34 @@
+[
+  {
+    "name": "river_crossing",
+    "category": "reasoning",
+    "system": "You are a helpful assistant. Think step by step.",
+    "prompt": "A farmer needs to cross a river with a wolf, a goat, and a cabbage. The boat can only carry the farmer and one item at a time. If left alone together, the wolf will eat the goat, and the goat will eat the cabbage. How can the farmer get everything across safely? Show each step.",
+    "max_tokens": 4096,
+    "reference_keywords": ["goat", "wolf", "cabbage", "step"]
+  },
+  {
+    "name": "knights_knaves",
+    "category": "reasoning",
+    "system": "You are a helpful assistant. Think step by step and show your reasoning clearly.",
+    "prompt": "On an island, every person is either a knight (always tells the truth) or a knave (always lies). You meet three people: A, B, and C. A says: 'B is a knave.' B says: 'A and C are the same type.' C says: 'A is a knight.' What type is each person? Show your reasoning.",
+    "max_tokens": 4096,
+    "reference_keywords": ["knight", "knave", "case", "contradiction"]
+  },
+  {
+    "name": "lateral_thinking",
+    "category": "reasoning",
+    "system": "You are a helpful assistant. Think carefully before answering.",
+    "prompt": "A man pushes his car to a hotel and tells the owner he's bankrupt. Why? Think about what context would make this statement logical.",
+    "max_tokens": 4096,
+    "reference_keywords": ["Monopoly", "game", "board"]
+  },
+  {
+    "name": "causal_reasoning",
+    "category": "reasoning",
+    "system": "You are a helpful assistant. Analyze the situation carefully.",
+    "prompt": "A company notices that employees who eat at the company cafeteria have 30% fewer sick days than those who don't. The CEO wants to make cafeteria meals mandatory to reduce sick days. Analyze this reasoning. What are at least 3 alternative explanations for the correlation? Would the policy likely achieve its goal?",
+    "max_tokens": 4096,
+    "reference_keywords": ["correlation", "causation", "confound", "selection bias"]
+  }
+]

@@ -1,0 +1,139 @@
+{
+  "_comment": "Test llama-server settings impact. Uses Gemma4-E4B-Q4_K_M as the control model.",
+  "configs": [
+    {
+      "label": "baseline",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 8192,
+      "batch_size": 2048,
+      "flash_attn": true
+    },
+
+    {
+      "label": "ctx-4k",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 4096,
+      "batch_size": 2048,
+      "flash_attn": true
+    },
+    {
+      "label": "ctx-16k",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 16384,
+      "batch_size": 2048,
+      "flash_attn": true
+    },
+    {
+      "label": "ctx-32k",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 32768,
+      "batch_size": 2048,
+      "flash_attn": true
+    },
+
+    {
+      "label": "no-flash-attn",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 8192,
+      "batch_size": 2048,
+      "flash_attn": false
+    },
+
+    {
+      "label": "kv-cache-q8",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 8192,
+      "batch_size": 2048,
+      "flash_attn": true,
+      "extra_args": {"cache-type-k": "q8_0", "cache-type-v": "q8_0"}
+    },
+    {
+      "label": "kv-cache-q4",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 8192,
+      "batch_size": 2048,
+      "flash_attn": true,
+      "extra_args": {"cache-type-k": "q4_0", "cache-type-v": "q4_0"}
+    },
+    {
+      "label": "kv-q4-ctx-32k",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 32768,
+      "batch_size": 2048,
+      "flash_attn": true,
+      "extra_args": {"cache-type-k": "q4_0", "cache-type-v": "q4_0"}
+    },
+
+    {
+      "label": "batch-512",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 8192,
+      "batch_size": 512,
+      "flash_attn": true
+    },
+    {
+      "label": "batch-4096",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 8192,
+      "batch_size": 4096,
+      "flash_attn": true
+    },
+
+    {
+      "label": "threads-4",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 8192,
+      "batch_size": 2048,
+      "threads": 4,
+      "flash_attn": true
+    },
+    {
+      "label": "threads-8",
+      "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "hf_file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "param_count": "E4B",
+      "ctx_size": 8192,
+      "batch_size": 2048,
+      "threads": 8,
+      "flash_attn": true
+    }
+  ],
+  "prompt_dirs": ["prompts/"],
+  "repeat": 1,
+  "max_tokens": 8192,
+  "temperature": 0.0
+}
