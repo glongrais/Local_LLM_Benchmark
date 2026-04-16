@@ -141,7 +141,7 @@ def run_single_prompt(
 
     t_start = time.monotonic()
     try:
-        resp = requests.post(url, json=payload, timeout=300)
+        resp = requests.post(url, json=payload, timeout=600)
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:

@@ -99,7 +99,7 @@ class BenchmarkPlan:
     configs: list[ServerConfig]
     prompt_dirs: list[str] = field(default_factory=lambda: ["prompts/"])
     repeat: int = 1
-    max_tokens: int = 2048
+    max_tokens: int = 16384
     temperature: float = 0.0
 
 

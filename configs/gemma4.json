@@ -28,8 +28,10 @@
       "flash_attn": true
     }
   ],
-  "prompt_dirs": ["prompts/"],
+  "prompt_dirs": [
+    "prompts/"
+  ],
   "repeat": 1,
-  "max_tokens": 8192,
+  "max_tokens": 16384,
   "temperature": 0.0
 }

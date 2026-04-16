@@ -58,6 +58,7 @@ JSON files in `prompts/` with 33 prompts across 7 categories: coding (4), reason
 - `n_gpu_layers: -1` offloads all layers to Metal by default.
 - Models are primarily loaded via `-hf` (HuggingFace repo ID), not local file paths. The HF cache at `~/.cache/huggingface/hub/` stores downloaded GGUF files.
 - Results DB is gitignored; reports in `results/` are also gitignored.
+- Two quality scores exist: `judge_score` (LLM-as-judge, preferred) and `quality_score` (auto-evaluator, fallback). Use `COALESCE(judge_score, quality_score)` for combined analysis.
 
 ## Gotchas
 
@@ -70,3 +71,4 @@ JSON files in `prompts/` with 33 prompts across 7 categories: coding (4), reason
 - Models may append EOS tokens (`<eos>`, `<|im_end|>`) that break code compilation. `_clean_response_to_python()` strips these and trims trailing lines until code compiles.
 - `storage.py` has a `MIGRATIONS` list that auto-adds new columns (judge_score, finish_reason, truncated) to existing DBs.
 - Judge needs large context (default 32768) to evaluate long responses. Response truncation is at 20K chars.
+- `bench.py purge` prompts for confirmation interactively. Pipe `echo "y"` for non-interactive use.

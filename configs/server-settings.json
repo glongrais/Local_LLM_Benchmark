@@ -11,7 +11,6 @@
       "batch_size": 2048,
       "flash_attn": true
     },
-
     {
       "label": "ctx-4k",
       "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
@@ -42,7 +41,6 @@
       "batch_size": 2048,
       "flash_attn": true
     },
-
     {
       "label": "no-flash-attn",
       "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
@@ -53,7 +51,6 @@
       "batch_size": 2048,
       "flash_attn": false
     },
-
     {
       "label": "kv-cache-q8",
       "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
@@ -63,7 +60,10 @@
       "ctx_size": 8192,
       "batch_size": 2048,
       "flash_attn": true,
-      "extra_args": {"cache-type-k": "q8_0", "cache-type-v": "q8_0"}
+      "extra_args": {
+        "cache-type-k": "q8_0",
+        "cache-type-v": "q8_0"
+      }
     },
     {
       "label": "kv-cache-q4",
@@ -74,7 +74,10 @@
       "ctx_size": 8192,
       "batch_size": 2048,
       "flash_attn": true,
-      "extra_args": {"cache-type-k": "q4_0", "cache-type-v": "q4_0"}
+      "extra_args": {
+        "cache-type-k": "q4_0",
+        "cache-type-v": "q4_0"
+      }
     },
     {
       "label": "kv-q4-ctx-32k",
@@ -85,9 +88,11 @@
       "ctx_size": 32768,
       "batch_size": 2048,
       "flash_attn": true,
-      "extra_args": {"cache-type-k": "q4_0", "cache-type-v": "q4_0"}
+      "extra_args": {
+        "cache-type-k": "q4_0",
+        "cache-type-v": "q4_0"
+      }
     },
-
     {
       "label": "batch-512",
       "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
@@ -108,7 +113,6 @@
       "batch_size": 4096,
       "flash_attn": true
     },
-
     {
       "label": "threads-4",
       "hf_repo": "unsloth/gemma-4-E4B-it-GGUF",
@@ -132,8 +136,10 @@
       "flash_attn": true
     }
   ],
-  "prompt_dirs": ["prompts/"],
+  "prompt_dirs": [
+    "prompts/"
+  ],
   "repeat": 1,
-  "max_tokens": 8192,
+  "max_tokens": 16384,
   "temperature": 0.0
 }
