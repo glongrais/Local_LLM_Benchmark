@@ -25,6 +25,7 @@ class ServerConfig:
     batch_size: int = 2048
     flash_attn: bool = True
     port: int = 8999
+    backend: str = "llama"  # "llama" for llama-server, "mlx" for mlx_lm.server
     extra_args: dict = field(default_factory=dict)
     # extra_args can include: cache_type_k, cache_type_v, mlock, etc.
 
@@ -37,6 +38,15 @@ class ServerConfig:
         repo_dir_name = "models--" + self.hf_repo.replace("/", "--")
         repo_dir = HF_CACHE_DIR / repo_dir_name
         if not repo_dir.exists():
+            return None
+        if self.backend == "mlx":
+            # MLX models are full snapshot dirs with config.json + safetensors
+            snapshots = repo_dir / "snapshots"
+            if not snapshots.exists():
+                return None
+            for snap in sorted(snapshots.iterdir(), reverse=True):
+                if (snap / "config.json").exists():
+                    return str(snap)
             return None
         # Search snapshots for the matching gguf file
         candidates = []
@@ -58,6 +68,31 @@ class ServerConfig:
         return None
 
     def to_cli_args(self) -> list[str]:
+        if self.backend == "mlx":
+            return self._mlx_cli_args()
+        return self._llama_cli_args()
+
+    def _mlx_cli_args(self) -> list[str]:
+        args = []
+        local_path = self.resolve_model_path()
+        if local_path and Path(local_path).exists():
+            args += ["--model", local_path]
+        elif self.hf_repo:
+            args += ["--model", self.hf_repo]
+        elif self.model_path:
+            args += ["--model", self.model_path]
+        else:
+            raise ValueError(f"Config '{self.label}': must specify hf_repo or model_path")
+        args += ["--port", str(self.port)]
+        for k, v in self.extra_args.items():
+            flag = f"--{k}" if len(k) > 1 else f"-{k}"
+            if v is True:
+                args.append(flag)
+            elif v is not False and v is not None:
+                args += [flag, str(v)]
+        return args
+
+    def _llama_cli_args(self) -> list[str]:
         args = []
         # Prefer local cache path to avoid network checks
         local_path = self.resolve_model_path()

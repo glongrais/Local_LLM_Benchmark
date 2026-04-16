@@ -1,0 +1,66 @@
+{
+  "configs": [
+    {
+      "label": "Gemma4-E2B-MLX-4bit",
+      "hf_repo": "unsloth/gemma-4-E2B-it-UD-MLX-4bit",
+      "quantization": "MLX-4bit",
+      "param_count": "E2B",
+      "backend": "mlx",
+      "port": 8999
+    },
+    {
+      "label": "Gemma4-E2B-MLX-8bit",
+      "hf_repo": "unsloth/gemma-4-E2B-it-MLX-8bit",
+      "quantization": "MLX-8bit",
+      "param_count": "E2B",
+      "backend": "mlx",
+      "port": 8999
+    },
+    {
+      "label": "Gemma4-E4B-MLX-4bit",
+      "hf_repo": "unsloth/gemma-4-E4B-it-UD-MLX-4bit",
+      "quantization": "MLX-4bit",
+      "param_count": "E4B",
+      "backend": "mlx",
+      "port": 8999
+    },
+    {
+      "label": "Gemma4-E4B-MLX-8bit",
+      "hf_repo": "unsloth/gemma-4-E4B-it-MLX-8bit",
+      "quantization": "MLX-8bit",
+      "param_count": "E4B",
+      "backend": "mlx",
+      "port": 8999
+    },
+    {
+      "label": "Gemma4-26B-A4B-MLX-4bit",
+      "hf_repo": "unsloth/gemma-4-26b-a4b-it-UD-MLX-4bit",
+      "quantization": "MLX-4bit",
+      "param_count": "26B-A4B",
+      "backend": "mlx",
+      "port": 8999
+    },
+    {
+      "label": "Gemma4-26B-A4B-MLX-8bit",
+      "hf_repo": "unsloth/gemma-4-26b-a4b-it-MLX-8bit",
+      "quantization": "MLX-8bit",
+      "param_count": "26B-A4B",
+      "backend": "mlx",
+      "port": 8999
+    },
+    {
+      "label": "Gemma4-31B-MLX-4bit",
+      "hf_repo": "unsloth/gemma-4-31b-it-UD-MLX-4bit",
+      "quantization": "MLX-4bit",
+      "param_count": "31B",
+      "backend": "mlx",
+      "port": 8999
+    }
+  ],
+  "prompt_dirs": [
+    "prompts/"
+  ],
+  "repeat": 1,
+  "max_tokens": 16384,
+  "temperature": 0.0
+}

@@ -216,6 +216,7 @@ def cmd_judge(args):
             port=args.port,
             ctx_size=args.ctx_size,
             flash_attn=True,
+            backend=args.backend,
         )
 
     run_ids = args.run_ids if args.run_ids else None
@@ -324,6 +325,7 @@ def main():
     p_judge.add_argument("--port", type=int, default=8090, help="Port for judge server (default: 8090)")
     p_judge.add_argument("--ctx-size", type=int, default=32768, help="Context size for judge model")
     p_judge.add_argument("--overwrite", action="store_true", help="Re-judge already scored results")
+    p_judge.add_argument("--backend", default="llama", choices=["llama", "mlx"], help="Server backend (default: llama)")
     p_judge.set_defaults(func=cmd_judge)
 
     # models

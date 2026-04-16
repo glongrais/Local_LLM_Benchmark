@@ -28,15 +28,17 @@ def find_llama_server() -> str:
 
 
 def start_server(config, run_id: str = "") -> subprocess.Popen:
-    """Start llama-server with the given config. Returns the Popen handle."""
-    binary = find_llama_server()
-    args = [binary] + config.to_cli_args()
+    """Start llama-server or mlx_lm.server with the given config. Returns the Popen handle."""
+    if config.backend == "mlx":
+        import sys
+        args = [sys.executable, "-m", "mlx_lm.server"] + config.to_cli_args()
+    else:
+        binary = find_llama_server()
+        args = [binary] + config.to_cli_args()
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     log_name = f"{run_id or 'server'}_{config.label}.log"
     log_file = open(LOG_DIR / log_name, "w")
-
-    # Command logged to results/logs/ — no console output here
 
     proc = subprocess.Popen(
         args,
@@ -78,18 +80,21 @@ def stop_server(proc: subprocess.Popen, timeout: int = 15) -> None:
 
 
 def kill_orphans(port: int = 8999) -> None:
-    """Kill any llama-server process listening on the given port."""
+    """Kill any llama-server or mlx_lm.server process listening on the given port."""
     try:
         import psutil
         for p in psutil.process_iter(["pid", "name", "cmdline"]):
-            if "llama-server" in (p.info.get("name") or ""):
-                cmdline = p.info.get("cmdline") or []
-                if "--port" in cmdline:
-                    idx = cmdline.index("--port")
-                    if idx + 1 < len(cmdline) and cmdline[idx + 1] == str(port):
-                        p.kill()
-                elif port == 8999:
-                    # Default port, kill if no explicit port in args
+            cmdline = p.info.get("cmdline") or []
+            name = p.info.get("name") or ""
+            is_llama = "llama-server" in name
+            is_mlx = "mlx_lm.server" in " ".join(cmdline)
+            if not (is_llama or is_mlx):
+                continue
+            if "--port" in cmdline:
+                idx = cmdline.index("--port")
+                if idx + 1 < len(cmdline) and cmdline[idx + 1] == str(port):
                     p.kill()
+            elif port == 8999:
+                p.kill()
     except Exception:
         pass

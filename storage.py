@@ -49,10 +49,11 @@ CREATE TABLE IF NOT EXISTS results (
 
 
 MIGRATIONS = [
-    ("finish_reason", "ALTER TABLE results ADD COLUMN finish_reason TEXT"),
-    ("truncated", "ALTER TABLE results ADD COLUMN truncated INTEGER DEFAULT 0"),
-    ("judge_score", "ALTER TABLE results ADD COLUMN judge_score REAL"),
-    ("judge_reason", "ALTER TABLE results ADD COLUMN judge_reason TEXT"),
+    ("finish_reason", "results", "ALTER TABLE results ADD COLUMN finish_reason TEXT"),
+    ("truncated", "results", "ALTER TABLE results ADD COLUMN truncated INTEGER DEFAULT 0"),
+    ("judge_score", "results", "ALTER TABLE results ADD COLUMN judge_score REAL"),
+    ("judge_reason", "results", "ALTER TABLE results ADD COLUMN judge_reason TEXT"),
+    ("backend", "runs", "ALTER TABLE runs ADD COLUMN backend TEXT DEFAULT 'llama'"),
 ]
 
 
@@ -63,9 +64,11 @@ def get_db(db_path: Path | None = None) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
     # Run migrations for existing DBs
-    existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(results)").fetchall()}
-    for col_name, sql in MIGRATIONS:
-        if col_name not in existing_cols:
+    existing = {}
+    for table in ("results", "runs"):
+        existing[table] = {row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    for col_name, table, sql in MIGRATIONS:
+        if col_name not in existing[table]:
             conn.execute(sql)
     conn.commit()
     return conn
@@ -75,8 +78,8 @@ def save_run(conn: sqlite3.Connection, run_id: str, timestamp: str, config) -> N
     conn.execute(
         """INSERT INTO runs
            (run_id, timestamp, model_path, hf_repo, model_label, quantization, param_count,
-            ctx_size, n_gpu_layers, threads, batch_size, flash_attn, extra_args)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ctx_size, n_gpu_layers, threads, batch_size, flash_attn, extra_args, backend)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             run_id,
             timestamp,
@@ -91,6 +94,7 @@ def save_run(conn: sqlite3.Connection, run_id: str, timestamp: str, config) -> N
             config.batch_size,
             int(config.flash_attn),
             json.dumps(config.extra_args),
+            config.backend,
         ),
     )
     conn.commit()

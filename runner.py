@@ -60,6 +60,13 @@ class ModelPrefetcher:
         logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
         try:
+            if config.backend == "mlx":
+                # MLX models: download entire repo (safetensors + config + tokenizer)
+                from huggingface_hub import snapshot_download
+                snapshot_download(repo_id=config.hf_repo)
+                self._done.add(key)
+                return
+
             from huggingface_hub import hf_hub_download
             kwargs = {"repo_id": config.hf_repo}
             if config.hf_file:
