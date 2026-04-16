@@ -71,7 +71,7 @@ def _get_benchmarked_models(db_path=None) -> set[str]:
                 result.add(str(Path(r["model_path"]).resolve()))
             if r["model_label"]:
                 result.add(r["model_label"])
-            if r.get("hf_repo"):
+            if r["hf_repo"]:
                 result.add(r["hf_repo"])
         return result
     except Exception:

@@ -267,10 +267,10 @@ def run_benchmark(plan: BenchmarkPlan, db_path=None, skip_existing: bool = False
         # Make sure this model is downloaded
         prefetcher.wait_for(config)
 
-        # Prefetch the next uncached model(s) while we run this one
-        remaining = [c for _, c in configs_to_run if c.label != config.label]
-        for upcoming in remaining[:2]:
-            prefetcher.prefetch(upcoming)
+        # Prefetch the next model while we run this one
+        current_idx = next((i for i, (_, c) in enumerate(configs_to_run) if c.label == config.label), -1)
+        for upcoming_idx in range(current_idx + 1, min(current_idx + 3, len(configs_to_run))):
+            prefetcher.prefetch(configs_to_run[upcoming_idx][1])
 
         # Check memory
         avail_mb = check_available_memory()
