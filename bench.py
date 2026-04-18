@@ -25,6 +25,13 @@ def cmd_run(args):
         print("Run 'python bench.py report' to see results.")
 
 
+def cmd_test(args):
+    """Quick smoke test: boot each model, send one prompt, report pass/fail."""
+    from runner import test_configs
+    plan = load_plan(args.config)
+    test_configs(plan)
+
+
 def cmd_report(args):
     run_ids = args.run_ids if args.run_ids else None
     categories = args.category.split(",") if args.category else None
@@ -277,6 +284,11 @@ def main():
     p_run.add_argument("--category", help="Run only this category")
     p_run.add_argument("--skip-existing", action="store_true", help="Skip configs that already have results in the DB")
     p_run.set_defaults(func=cmd_run)
+
+    # test
+    p_test = sub.add_parser("test", help="Quick smoke test — boot each model, send one prompt")
+    p_test.add_argument("--config", "-c", required=True, help="Path to benchmark config JSON")
+    p_test.set_defaults(func=cmd_test)
 
     # report
     p_report = sub.add_parser("report", help="Show comparison report")

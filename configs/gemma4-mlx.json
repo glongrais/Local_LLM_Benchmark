@@ -10,14 +10,6 @@
       "port": 8999
     },
     {
-      "label": "Gemma4-E2B-MLX-8bit",
-      "hf_repo": "unsloth/gemma-4-E2B-it-MLX-8bit",
-      "quantization": "MLX-8bit",
-      "param_count": "E2B",
-      "backend": "mlx",
-      "port": 8999
-    },
-    {
       "label": "Gemma4-E4B-MLX-4bit",
       "hf_repo": "unsloth/gemma-4-E4B-it-UD-MLX-4bit",
       "quantization": "MLX-4bit",

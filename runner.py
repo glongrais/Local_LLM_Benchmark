@@ -392,3 +392,73 @@ def run_benchmark(plan: BenchmarkPlan, db_path=None, skip_existing: bool = False
 
     conn.close()
     return run_ids
+
+
+SMOKE_TEST_PROMPT = {
+    "name": "smoke_test",
+    "category": "test",
+    "system": "",
+    "prompt": "Say hello in one sentence.",
+    "max_tokens": 64,
+}
+
+
+def test_configs(plan: BenchmarkPlan) -> bool:
+    """Quick smoke test: boot each model, send one prompt, report pass/fail."""
+    passed = 0
+    failed = 0
+    total = len(plan.configs)
+
+    for ci, config in enumerate(plan.configs, 1):
+        console.rule(f"[bold]{config.label}[/bold]  ({ci}/{total})")
+
+        kill_orphans(config.port)
+        time.sleep(1)
+
+        proc = start_server(config, "test")
+        console.print(f"  [dim]Loading model (PID: {proc.pid})...[/dim]")
+
+        health_timeout = 600 if config.backend == "mlx" else 180
+        t0 = time.monotonic()
+        ready = wait_for_health(config.port, timeout=health_timeout, proc=proc)
+        health_time = time.monotonic() - t0
+
+        if not ready:
+            console.print("  [red]Server failed to start[/red]")
+            stop_server(proc)
+            failed += 1
+            time.sleep(2)
+            continue
+
+        console.print(f"  [green]Server ready[/green] ({health_time:.1f}s)")
+
+        result = run_single_prompt(
+            prompt=SMOKE_TEST_PROMPT,
+            port=config.port,
+            max_tokens=64,
+            temperature=0.0,
+            server_pid=proc.pid,
+        )
+
+        stop_server(proc)
+        time.sleep(2)
+
+        text = (result.get("response_text") or "").strip()
+        tps = result.get("generation_tps", 0)
+        tokens = result.get("completion_tokens", 0)
+
+        if text and not text.startswith("ERROR"):
+            preview = text.replace("\n", " ")[:100]
+            console.print(
+                f"  [green]Response:[/green] \"{preview}\" "
+                f"({tokens} tok, {tps} tok/s)"
+            )
+            passed += 1
+        else:
+            console.print(f"  [red]Failed:[/red] {text[:100]}")
+            failed += 1
+
+    console.print()
+    color = "green" if failed == 0 else "yellow" if passed > 0 else "red"
+    console.print(f"[bold {color}]Results: {passed}/{total} passed[/bold {color}]")
+    return failed == 0
