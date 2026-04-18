@@ -1,8 +1,8 @@
 # Local LLM Benchmark
 
-A benchmarking framework for comparing local LLMs running via [llama.cpp](https://github.com/ggerganov/llama.cpp) server. Test different models, sizes, quantizations, and server settings to find the best configuration for your hardware.
+A benchmarking framework for comparing local LLMs running via [llama.cpp](https://github.com/ggerganov/llama.cpp) server or [MLX](https://github.com/ml-explore/mlx-examples) (Apple Silicon). Test different models, sizes, quantizations, and server settings to find the best configuration for your hardware.
 
-Built for Apple Silicon Macs but works on any machine running `llama-server`.
+Supports two backends: `llama-server` (GGUF models) and `mlx_vlm.server` (MLX safetensors models).
 
 ## What it measures
 
@@ -44,8 +44,9 @@ python3 bench.py judge --hf-repo unsloth/gemma-4-31B-it-GGUF:UD-Q4_K_XL
 
 ## Configuration
 
-Benchmark configs are JSON files listing models and settings to test. Models are loaded from HuggingFace via the `-hf` flag (downloaded automatically) or from local GGUF files.
+Benchmark configs are JSON files listing models and settings to test. Models are loaded from HuggingFace (downloaded automatically).
 
+**llama-server (GGUF):**
 ```json
 {
   "configs": [
@@ -59,9 +60,24 @@ Benchmark configs are JSON files listing models and settings to test. Models are
       "flash_attn": true
     }
   ],
-  "prompt_dirs": ["prompts/"],
-  "max_tokens": 8192,
-  "temperature": 0.0
+  "max_tokens": 16384
+}
+```
+
+**MLX (Apple Silicon):**
+```json
+{
+  "configs": [
+    {
+      "label": "Gemma4-E4B-MLX-4bit",
+      "hf_repo": "unsloth/gemma-4-E4B-it-UD-MLX-4bit",
+      "quantization": "MLX-4bit",
+      "param_count": "E4B",
+      "backend": "mlx",
+      "port": 8999
+    }
+  ],
+  "max_tokens": 16384
 }
 ```
 
@@ -70,7 +86,8 @@ Benchmark configs are JSON files listing models and settings to test. Models are
 | Config | Purpose |
 |---|---|
 | `configs/quick.json` | Fast test with small models (Gemma 4 E2B/E4B) |
-| `configs/gemma4-full.json` | All Gemma 4 sizes and quantizations |
+| `configs/gemma4-full.json` | All Gemma 4 sizes and quantizations (GGUF) |
+| `configs/gemma4-mlx.json` | Gemma 4 models via MLX backend (Apple Silicon) |
 | `configs/multi-model.json` | Cross-model comparison (Gemma 4, Qwen 3, Qwen 3.5, DeepSeek-R1) |
 | `configs/server-settings.json` | Test llama-server flags (context size, KV cache quant, flash attention, batch size, threads) |
 
@@ -93,6 +110,7 @@ Use `extra_args` to test llama-server flags:
 # Benchmarking
 python3 bench.py run -c config.json              # Run all configs
 python3 bench.py run -c config.json --skip-existing  # Skip already-benchmarked configs
+python3 bench.py test -c config.json             # Quick smoke test (boot + one prompt per model)
 
 # Results
 python3 bench.py report                           # Comparison table
@@ -104,11 +122,13 @@ python3 bench.py show <run_id>                    # Detailed results
 python3 bench.py autoscore                        # Re-run auto-evaluation
 python3 bench.py autoscore --workers 8            # Parallel scoring
 python3 bench.py judge --hf-repo repo:file        # LLM-as-judge scoring
+python3 bench.py judge --backend mlx --hf-repo repo  # Judge with MLX model
 python3 bench.py score <run_id>                   # Manual interactive scoring
 
 # Model management
-python3 bench.py models                           # List downloaded GGUF files
+python3 bench.py models                           # List all cached models (GGUF + MLX)
 python3 bench.py models --clean                   # Delete unused models
+python3 bench.py models --clean --all             # Include benchmarked models
 
 # Maintenance
 python3 bench.py purge <run_id>                   # Delete a run
@@ -128,5 +148,6 @@ Three layers of evaluation:
 ## Requirements
 
 - Python 3.10+
-- [llama.cpp](https://github.com/ggerganov/llama.cpp) server (`llama-server` on PATH or via Homebrew)
-- GGUF models from [HuggingFace](https://huggingface.co) (downloaded automatically)
+- [llama.cpp](https://github.com/ggerganov/llama.cpp) server (`llama-server` on PATH or via Homebrew) — for GGUF models
+- [mlx-vlm](https://github.com/Blaizzy/mlx-vlm) (`pip install mlx-vlm`) — for MLX models on Apple Silicon
+- Models from [HuggingFace](https://huggingface.co) (downloaded automatically)
