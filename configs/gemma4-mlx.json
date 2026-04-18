@@ -1,4 +1,5 @@
 {
+  "_comment": "8-bit models may fail with older mlx_vlm versions (extra params error). They will be skipped automatically.",
   "configs": [
     {
       "label": "Gemma4-E2B-MLX-4bit",

@@ -31,7 +31,7 @@ def start_server(config, run_id: str = "") -> subprocess.Popen:
     """Start llama-server or mlx_lm.server with the given config. Returns the Popen handle."""
     if config.backend == "mlx":
         import sys
-        args = [sys.executable, "-m", "mlx_lm.server"] + config.to_cli_args()
+        args = [sys.executable, "-m", "mlx_vlm.server"] + config.to_cli_args()
     else:
         binary = find_llama_server()
         args = [binary] + config.to_cli_args()
@@ -49,17 +49,28 @@ def start_server(config, run_id: str = "") -> subprocess.Popen:
     return proc
 
 
-def wait_for_health(port: int = 8999, timeout: int = 180, interval: float = 2.0) -> bool:
+def wait_for_health(port: int = 8999, timeout: int = 180, interval: float = 2.0,
+                    proc: subprocess.Popen | None = None) -> bool:
     """Poll the health endpoint until the server is ready."""
     url = f"http://127.0.0.1:{port}/health"
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
+        # If the process died, no point waiting
+        if proc and proc.poll() is not None:
+            return False
         try:
             r = requests.get(url, timeout=5)
             if r.status_code == 200:
                 data = r.json()
-                if data.get("status") == "ok":
+                status = data.get("status")
+                if status == "ok":
                     return True
+                # mlx_vlm returns "healthy" but may have failed to load the model
+                if status == "healthy":
+                    if data.get("loaded_model") is not None:
+                        return True
+                    # Server is up but no model loaded — keep waiting in case
+                    # it's still loading, but check the log for errors
         except (requests.ConnectionError, requests.Timeout):
             pass
         time.sleep(interval)
@@ -87,7 +98,7 @@ def kill_orphans(port: int = 8999) -> None:
             cmdline = p.info.get("cmdline") or []
             name = p.info.get("name") or ""
             is_llama = "llama-server" in name
-            is_mlx = "mlx_lm.server" in " ".join(cmdline)
+            is_mlx = "mlx_vlm.server" in " ".join(cmdline) or "mlx_lm.server" in " ".join(cmdline)
             if not (is_llama or is_mlx):
                 continue
             if "--port" in cmdline:

@@ -74,10 +74,9 @@ class ServerConfig:
 
     def _mlx_cli_args(self) -> list[str]:
         args = []
-        local_path = self.resolve_model_path()
-        if local_path and Path(local_path).exists():
-            args += ["--model", local_path]
-        elif self.hf_repo:
+        # Always prefer hf_repo for MLX — let mlx_vlm handle downloading.
+        # Local cache paths may have incomplete downloads (metadata only, no weights).
+        if self.hf_repo:
             args += ["--model", self.hf_repo]
         elif self.model_path:
             args += ["--model", self.model_path]

@@ -40,7 +40,9 @@ class ModelPrefetcher:
         """Start downloading a model in the background if not already cached."""
         if not config.hf_repo:
             return
-        if config.resolve_model_path():
+        # For llama, resolve_model_path finding a .gguf means it's cached.
+        # For MLX, skip this check — config.json may exist without the weights.
+        if config.backend != "mlx" and config.resolve_model_path():
             return
         key = f"{config.hf_repo}:{config.hf_file}"
         if key in self._threads or key in self._done:
@@ -287,7 +289,9 @@ def run_benchmark(plan: BenchmarkPlan, db_path=None, skip_existing: bool = False
 
         # Wait for server
         console.print(f"  [dim]Loading model (PID: {proc.pid})...[/dim]")
-        ready = wait_for_health(config.port, timeout=180)
+        # MLX models may need to download on first run — allow more time
+        health_timeout = 600 if config.backend == "mlx" else 180
+        ready = wait_for_health(config.port, timeout=health_timeout, proc=proc)
 
         if not ready:
             console.print("  [red]Server failed to start. Skipping.[/red]")

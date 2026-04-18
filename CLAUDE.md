@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Python benchmarking framework for comparing local LLMs running via `llama-server` (llama.cpp). Designed for an M4 Max Mac with 64GB unified memory. Models come from HuggingFace as GGUF files.
+A Python benchmarking framework for comparing local LLMs via `llama-server` (llama.cpp) and `mlx_vlm.server` (Apple MLX). Designed for an M4 Max Mac with 64GB unified memory. Models come from HuggingFace as GGUF (llama) or safetensors (MLX).
 
 ## Commands
 
@@ -28,16 +28,18 @@ python3 bench.py run -c config.json --skip-existing  # Skip configs already in t
 python3 bench.py judge                         # Score results using running server on port 8080
 python3 bench.py judge --hf-repo repo:file     # Start a judge model and score all results
 python3 bench.py judge --overwrite             # Re-judge already scored results
+python3 bench.py judge --backend mlx --hf-repo repo  # Judge with MLX model
 python3 bench.py purge <run_id> [run_id...]    # Delete runs from the DB
 python3 bench.py autoscore --workers 8         # Parallel auto-scoring
+.venv/bin/python -m pytest project_tests/ -v   # Run project tests (78 tests)
 ```
 
 ## Architecture
 
 The benchmark flow is sequential per config: **start llama-server → run all prompts → collect metrics → stop server → next config**.
 
-- `config.py` — `ServerConfig` and `BenchmarkPlan` dataclasses. Models are specified via `hf_repo`/`hf_file` or `model_path`. `resolve_model_path()` checks the local HF cache first to avoid network downloads. `to_cli_args()` uses `-m` with local path when available, falls back to `-hf`. The `extra_args` dict passes arbitrary flags (e.g. `cache-type-k`, `cache-type-v`).
-- `server.py` — Starts/stops `llama-server` as a subprocess. Polls `/health` endpoint until ready (up to 180s for large models). Logs server output to `results/logs/`.
+- `config.py` — `ServerConfig` and `BenchmarkPlan` dataclasses. `backend` field selects `"llama"` or `"mlx"`. Models specified via `hf_repo`/`hf_file` or `model_path`. `resolve_model_path()` checks local HF cache (GGUF files for llama, `config.json` dirs for MLX). `to_cli_args()` delegates to `_llama_cli_args()` or `_mlx_cli_args()`. The `extra_args` dict passes arbitrary flags.
+- `server.py` — Starts/stops `llama-server` or `mlx_vlm.server` based on `config.backend`. Polls `/health` endpoint until ready (up to 180s). Health check accepts `"ok"` (llama) and `"healthy"` (mlx_vlm). Logs to `results/logs/`.
 - `runner.py` — Main orchestration loop. Calls `/v1/chat/completions` (OpenAI-compatible endpoint) with `stream=false` and `temperature=0` for deterministic output. Extracts token counts from `usage` and TPS from `timings` if available.
 - `metrics.py` — Background thread samples RSS of the llama-server process via psutil during each request. Returns peak RSS.
 - `storage.py` — SQLite at `results/benchmark.db`. Two tables: `runs` (one per server config) and `results` (one per prompt execution). Quality scores are nullable and filled via `bench.py score`.
@@ -46,6 +48,7 @@ The benchmark flow is sequential per config: **start llama-server → run all pr
 - `tests/` — Test harness files for executable and ml prompts. Each file `from solution import ...` and runs assertions. Convention: print `PASS test_name` or `FAIL test_name (detail)` per test, end with `RESULT passed/total`.
 - `evaluate.py` — Hybrid auto-evaluator. Scoring varies by category: coding/math/reasoning/general use keyword matching and pattern checks. executable/ml use file-based testing: writes response as `solution.py` in a tmpdir, runs `tests/test_*.py` which imports from it, parses `RESULT x/y` output. agentic_coding uses code substance + feature checks. `_clean_response_to_python()` handles both raw Python and markdown-wrapped responses.
 - `judge.py` — LLM-as-judge evaluation. Sends each response + rubric to a judge model, parses JSON score from response (handles markdown fences, partial JSON, thinking model output). Stores `judge_score` and `judge_reason` in the results table.
+- `project_tests/` — pytest test suite (78 tests) covering config, storage, models, evaluate, judge, and runner. Uses tmp DBs and mock HF cache. NOT the same as `tests/` (benchmark prompt harnesses).
 
 ## Prompt Test Suite
 
@@ -68,7 +71,12 @@ JSON files in `prompts/` with 33 prompts across 7 categories: coding (4), reason
 - Runs are append-only: `bench.py run` always creates new `run_id` entries, never overwrites. Use `--skip-existing` to avoid duplicates.
 - HF cache files under `snapshots/` are symlinks to `blobs/<hash>`. `models.py` uses symlink paths for display but deduplicates by resolved blob target.
 - Default ports: benchmark server=8999, judge=8090. User has other services on 8080.
+- `wait_for_health()` checks `proc.poll()` to detect early crashes — prevents benchmarking against a stale server from a previous run that's still listening on the same port.
 - Models may append EOS tokens (`<eos>`, `<|im_end|>`) that break code compilation. `_clean_response_to_python()` strips these and trims trailing lines until code compiles.
 - `storage.py` has a `MIGRATIONS` list that auto-adds new columns (judge_score, finish_reason, truncated) to existing DBs.
 - Judge needs large context (default 32768) to evaluate long responses. Response truncation is at 20K chars.
 - `bench.py purge` prompts for confirmation interactively. Pipe `echo "y"` for non-interactive use.
+- MLX backend uses `mlx_vlm` (not `mlx_lm`) because Gemma 4 is a multimodal architecture. Even text-only inference needs the VLM package.
+- `sqlite3.Row` does NOT have `.get()` — use `row["key"]` with bracket access. `.get()` raises `AttributeError` which broad `except Exception` blocks silently swallow.
+- MLX models don't use ctx_size, n_gpu_layers, batch_size, or flash_attn — these are llama-server concepts. MLX manages context and GPU automatically.
+- Storage migrations now span both `runs` and `results` tables. Each migration entry is `(col_name, table, sql)`.

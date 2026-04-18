@@ -108,12 +108,12 @@ def test_mlx_cli_args():
     assert args == ["--model", "org/mlx-model", "--port", "9000"]
 
 
-def test_mlx_cli_args_with_local_path(mock_hf_cache):
-    snap = make_mlx_repo(mock_hf_cache, "org", "mlx-model")
+def test_mlx_cli_args_prefers_hf_repo(mock_hf_cache):
+    """MLX always uses hf_repo to let mlx_vlm handle downloads (avoids incomplete cache)."""
+    make_mlx_repo(mock_hf_cache, "org", "mlx-model")
     config = ServerConfig(label="test", hf_repo="org/mlx-model", backend="mlx", port=9000)
     args = config.to_cli_args()
-    assert args[0] == "--model"
-    assert args[1] == str(snap)
+    assert args == ["--model", "org/mlx-model", "--port", "9000"]
 
 
 def test_cli_args_raises_without_model():

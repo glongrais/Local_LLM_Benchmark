@@ -1,11 +1,11 @@
-"""Tests for models.py — file discovery, benchmarked detection, parsing."""
+"""Tests for models.py — repo discovery, benchmarked detection, parsing."""
 
 from pathlib import Path
 
 from config import ServerConfig
-from models import _format_size, _parse_hf_repo, _find_gguf_files, _is_benchmarked, _get_benchmarked_models, list_models
+from models import _format_size, _parse_hf_repo, _dir_size, _detect_model_type, _get_benchmarked_repos, list_models
 from storage import save_run
-from conftest import make_gguf_repo
+from conftest import make_gguf_repo, make_mlx_repo
 
 
 def test_format_size():
@@ -16,114 +16,80 @@ def test_format_size():
 
 
 def test_parse_hf_repo():
-    path = Path("/cache/models--unsloth--gemma-4-31B-it-GGUF/snapshots/abc/model.gguf")
+    path = Path("/cache/models--unsloth--gemma-4-31B-it-GGUF")
     assert _parse_hf_repo(path) == "unsloth/gemma-4-31B-it-GGUF"
 
 
-def test_parse_hf_repo_no_match():
-    assert _parse_hf_repo(Path("/some/random/path/model.gguf")) == ""
+def test_parse_hf_repo_no_models_prefix():
+    # Without models-- prefix, returns the dir name as-is
+    assert _parse_hf_repo(Path("/some/random/path")) == "path"
 
 
-def test_find_gguf_files_basic(tmp_path):
-    (tmp_path / "model.gguf").write_bytes(b"\x00" * 100)
-    (tmp_path / "other.txt").write_text("not a model")
-    files = _find_gguf_files([str(tmp_path)])
-    assert len(files) == 1
-    assert files[0].name == "model.gguf"
+def test_dir_size(tmp_path):
+    (tmp_path / "a.bin").write_bytes(b"\x00" * 100)
+    (tmp_path / "b.bin").write_bytes(b"\x00" * 200)
+    assert _dir_size(tmp_path) == 300
 
 
-def test_find_gguf_deduplicates_symlinks(tmp_path):
+def test_dir_size_deduplicates_symlinks(tmp_path):
     blob = tmp_path / "blob"
     blob.write_bytes(b"\x00" * 100)
-    link1 = tmp_path / "link1.gguf"
-    link2 = tmp_path / "link2.gguf"
-    link1.symlink_to(blob)
-    link2.symlink_to(blob)
-    files = _find_gguf_files([str(tmp_path)])
-    # blob itself doesn't end in .gguf, so only the symlinks are found
-    # but they resolve to the same target, so only one should be returned
-    assert len(files) == 1
+    sub = tmp_path / "sub"
+    sub.mkdir()
+    (sub / "link1").symlink_to(blob)
+    (sub / "link2").symlink_to(blob)
+    # blob counted once (100), not three times
+    assert _dir_size(tmp_path) == 100
 
 
-def test_find_gguf_skips_nonexistent():
-    files = _find_gguf_files(["/nonexistent/path/that/does/not/exist"])
-    assert files == []
+def test_detect_model_type_gguf(mock_hf_cache):
+    make_gguf_repo(mock_hf_cache, "org", "repo-GGUF", ["model.gguf"])
+    repo_dir = mock_hf_cache / "models--org--repo-GGUF"
+    assert _detect_model_type(repo_dir) == "gguf"
 
 
-def test_is_benchmarked_by_repo():
-    benchmarked = {"unsloth/gemma-4-E4B-it-GGUF", "Gemma4-E4B-Q4_K_M"}
-    path = Path("/cache/models--unsloth--gemma-4-E4B-it-GGUF/snapshots/abc/model.gguf")
-    assert _is_benchmarked(path, "unsloth/gemma-4-E4B-it-GGUF", benchmarked)
+def test_detect_model_type_safetensors(mock_hf_cache):
+    make_mlx_repo(mock_hf_cache, "org", "repo-MLX")
+    repo_dir = mock_hf_cache / "models--org--repo-MLX"
+    assert _detect_model_type(repo_dir) == "safetensors"
 
 
-def test_is_benchmarked_by_label_substring():
-    benchmarked = {"Gemma4-E4B-Q4_K_M"}
-    path = Path("/cache/snapshots/gemma-4-E4B-it-UD-Q4_K_M.gguf")
-    # filename stem is "gemma-4-E4B-it-UD-Q4_K_M", label is "Gemma4-E4B-Q4_K_M"
-    # substring match: "gemma-4-E4B-it-UD-Q4_K_M" in "Gemma4-E4B-Q4_K_M" => False
-    # But: "Gemma4-E4B-Q4_K_M" doesn't contain "gemma-4-E4B-it-UD-Q4_K_M"
-    # The check is: name in b (for b in benchmarked)
-    # So: "gemma-4-E4B-it-UD-Q4_K_M" in "Gemma4-E4B-Q4_K_M" => False
-    assert not _is_benchmarked(path, "", benchmarked)
+def test_detect_model_type_other(tmp_path):
+    repo_dir = tmp_path / "models--org--empty"
+    repo_dir.mkdir()
+    assert _detect_model_type(repo_dir) == "other"
 
 
-def test_is_benchmarked_not_matched():
-    benchmarked = {"other-model"}
-    path = Path("/cache/my-model.gguf")
-    assert not _is_benchmarked(path, "org/different-repo", benchmarked)
-
-
-def test_get_benchmarked_models_from_db(tmp_db):
-    """Test _get_benchmarked_models with a real db_path (not a connection)."""
-    from storage import get_db, save_run
-    conn = get_db(tmp_db)
-    config = ServerConfig(
-        label="My-Model",
-        hf_repo="org/my-model-GGUF",
-        model_path="/path/to/model.gguf",
-    )
-    save_run(conn, "r1", "2025-01-01T00:00:00Z", config)
-    conn.close()
-
-    benchmarked = _get_benchmarked_models(tmp_db)
-    assert "My-Model" in benchmarked
-    assert "org/my-model-GGUF" in benchmarked
-
-
-def test_get_benchmarked_models_integration(tmp_db):
-    """Full round-trip: save a run, then check _get_benchmarked_models finds it."""
+def test_get_benchmarked_repos(tmp_db):
     from storage import get_db, save_run
     conn = get_db(tmp_db)
     config = ServerConfig(label="TestLabel", hf_repo="org/test-repo")
     save_run(conn, "r1", "2025-01-01T00:00:00Z", config)
     conn.close()
 
-    benchmarked = _get_benchmarked_models(tmp_db)
-    assert "TestLabel" in benchmarked
-    assert "org/test-repo" in benchmarked
+    repos = _get_benchmarked_repos(tmp_db)
+    assert "org/test-repo" in repos
 
 
-def test_get_benchmarked_models_null_model_path(tmp_db):
-    """Ensure NULL model_path doesn't add 'None' to the set."""
+def test_get_benchmarked_repos_excludes_empty(tmp_db):
     from storage import get_db, save_run
     conn = get_db(tmp_db)
-    config = ServerConfig(label="TestLabel", hf_repo="org/repo")
+    config = ServerConfig(label="TestLabel", model_path="/local/model.gguf")
     save_run(conn, "r1", "2025-01-01T00:00:00Z", config)
     conn.close()
 
-    benchmarked = _get_benchmarked_models(tmp_db)
-    assert "None" not in benchmarked
-    assert "" not in benchmarked
+    repos = _get_benchmarked_repos(tmp_db)
+    assert "" not in repos
 
 
-def test_list_models_with_benchmark_status(mock_hf_cache, tmp_db):
+def test_list_models_shows_all_repo_types(mock_hf_cache, tmp_db):
     from storage import get_db, save_run
 
-    make_gguf_repo(mock_hf_cache, "org", "benchmarked-GGUF", ["model.gguf"])
-    make_gguf_repo(mock_hf_cache, "org", "fresh-GGUF", ["model.gguf"])
+    make_gguf_repo(mock_hf_cache, "org", "gguf-model", ["model.gguf"])
+    make_mlx_repo(mock_hf_cache, "org", "mlx-model")
 
     conn = get_db(tmp_db)
-    config = ServerConfig(label="test", hf_repo="org/benchmarked-GGUF")
+    config = ServerConfig(label="test", hf_repo="org/gguf-model")
     save_run(conn, "r1", "2025-01-01T00:00:00Z", config)
     conn.close()
 
@@ -131,5 +97,28 @@ def test_list_models_with_benchmark_status(mock_hf_cache, tmp_db):
     assert len(models) == 2
 
     by_repo = {m["repo"]: m for m in models}
-    assert by_repo["org/benchmarked-GGUF"]["benchmarked"] is True
-    assert by_repo["org/fresh-GGUF"]["benchmarked"] is False
+    assert by_repo["org/gguf-model"]["type"] == "gguf"
+    assert by_repo["org/gguf-model"]["benchmarked"] is True
+    assert by_repo["org/mlx-model"]["type"] == "safetensors"
+    assert by_repo["org/mlx-model"]["benchmarked"] is False
+
+
+def test_list_models_sorted_by_size(mock_hf_cache):
+    # Create two repos with different sizes
+    snap1 = make_gguf_repo(mock_hf_cache, "org", "small", ["tiny.gguf"])
+    snap2 = make_gguf_repo(mock_hf_cache, "org", "big", ["huge.gguf"])
+    (snap2 / "huge.gguf").write_bytes(b"\x00" * 10000)
+
+    models = list_models([str(mock_hf_cache)])
+    assert models[0]["repo"] == "org/big"
+    assert models[1]["repo"] == "org/small"
+
+
+def test_list_models_gguf_files_listed(mock_hf_cache):
+    make_gguf_repo(mock_hf_cache, "org", "multi-GGUF", ["q4.gguf", "q8.gguf", "mmproj-BF16.gguf"])
+    models = list_models([str(mock_hf_cache)])
+    assert len(models) == 1
+    # mmproj should be excluded from gguf_files
+    assert "mmproj-BF16.gguf" not in models[0]["gguf_files"]
+    assert "q4.gguf" in models[0]["gguf_files"]
+    assert "q8.gguf" in models[0]["gguf_files"]
