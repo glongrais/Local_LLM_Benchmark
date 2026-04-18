@@ -129,6 +129,7 @@ def run_single_prompt(
     max_tokens: int,
     temperature: float,
     server_pid: int,
+    model: str = "",
 ) -> dict:
     """Run a single prompt against the server and collect metrics."""
     url = f"http://127.0.0.1:{port}/v1/chat/completions"
@@ -144,6 +145,8 @@ def run_single_prompt(
         "temperature": temperature,
         "stream": False,
     }
+    if model:
+        payload["model"] = model
 
     sampler = MemorySampler(server_pid)
     sampler.start()
@@ -190,6 +193,11 @@ def run_single_prompt(
                 if msg.get(key):
                     response_text = msg[key]
                     break
+
+    # Estimate completion tokens from response text when usage is missing
+    # (mlx_vlm.server doesn't always populate the usage field)
+    if not completion_tokens and response_text:
+        completion_tokens = max(1, len(response_text) // 4)  # rough ~4 chars/token
 
     # Compute TPS from timings if available, otherwise from wall clock
     timings = data.get("timings", {})
@@ -337,6 +345,7 @@ def run_benchmark(plan: BenchmarkPlan, db_path=None, skip_existing: bool = False
                         max_tokens=plan.max_tokens,
                         temperature=plan.temperature,
                         server_pid=proc.pid,
+                        model=config.hf_repo,
                     )
 
                     # Auto-evaluate quality
@@ -438,6 +447,7 @@ def test_configs(plan: BenchmarkPlan) -> bool:
             max_tokens=64,
             temperature=0.0,
             server_pid=proc.pid,
+            model=config.hf_repo,
         )
 
         stop_server(proc)

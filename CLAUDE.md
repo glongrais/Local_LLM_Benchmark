@@ -25,6 +25,7 @@ python3 bench.py models ~/custom/dir           # Scan custom directory instead o
 python3 bench.py autoscore                       # Re-run auto-evaluation on all existing results
 python3 bench.py autoscore --run-ids ID1 ID2     # Re-score specific runs
 python3 bench.py run -c config.json --skip-existing  # Skip configs already in the DB
+python3 bench.py test -c config.json               # Quick smoke test (boot + one prompt per model)
 python3 bench.py judge                         # Score results using running server on port 8080
 python3 bench.py judge --hf-repo repo:file     # Start a judge model and score all results
 python3 bench.py judge --overwrite             # Re-judge already scored results
@@ -79,4 +80,6 @@ JSON files in `prompts/` with 33 prompts across 7 categories: coding (4), reason
 - MLX backend uses `mlx_vlm` (not `mlx_lm`) because Gemma 4 is a multimodal architecture. Even text-only inference needs the VLM package.
 - `sqlite3.Row` does NOT have `.get()` — use `row["key"]` with bracket access. `.get()` raises `AttributeError` which broad `except Exception` blocks silently swallow.
 - MLX models don't use ctx_size, n_gpu_layers, batch_size, or flash_attn — these are llama-server concepts. MLX manages context and GPU automatically.
+- `mlx_vlm.server` requires `"model"` field in the request payload — without it, it silently falls back to the default `nanoLLaVA-1.5-8bit` model. The runner passes `config.hf_repo` as the model value.
+- MLX CLI args always use the HF repo ID (never local cache paths) — incomplete downloads (metadata without weights) cause silent failures.
 - Storage migrations now span both `runs` and `results` tables. Each migration entry is `(col_name, table, sql)`.
